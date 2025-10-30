@@ -1,0 +1,97 @@
+name: Deploy to environment
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: environment
+        description: "Choose an environment to deploy to"
+        required: true
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.inputs.environment }}-${{ github.run_number }}
+
+env:
+  IMAGE_NAME: clamapi
+
+jobs:
+  set-env:
+    name: Preflight
+    runs-on: ubuntu-24.04
+    outputs:
+      environment: ${{ steps.var.outputs.environment }}
+      branch: ${{ steps.var.outputs.branch }}
+      checked-out-sha: ${{ steps.var.outputs.checked-out-sha }}
+      image-name: ${{ steps.var.outputs.image-name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+      - id: var
+        run: |
+          GIT_REF=${{ github.ref_name }}
+          GIT_BRANCH=${GIT_REF##*/}
+          INPUT=${{ github.event.inputs.environment }}
+          ENVIRONMENT=${INPUT:-"development"}
+          CHECKED_OUT_SHA="$(git log -1 '--format=format:%H')"
+          TIME="$(date)"
+          echo "environment=${ENVIRONMENT,,}" >> $GITHUB_OUTPUT
+          echo "branch=$GIT_BRANCH" >> $GITHUB_OUTPUT
+          echo "checked-out-sha=${CHECKED_OUT_SHA}" >> $GITHUB_OUTPUT
+          echo "image-name=${{ env.IMAGE_NAME }}" >> $GITHUB_OUTPUT
+
+
+  build-import-deploy:
+    name: Deploy to ${{ needs.set-env.outputs.environment }}
+    runs-on: ubuntu-24.04
+    needs: [ set-env ]
+    environment: ${{ needs.set-env.outputs.environment }}
+    permissions:
+      attestations: write
+      packages: write
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+      - name: Build
+        uses: DFE-Digital/deploy-azure-container-apps-action/.github/actions/build@8e72e403f05ff9da09668207eef1d79e1ce9d1a7 # v5.2.1
+        with:
+          image-name: ${{ needs.set-env.outputs.image-name }}
+          build-args: |
+            CI=true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Import
+        uses: DFE-Digital/deploy-azure-container-apps-action/.github/actions/import@8e72e403f05ff9da09668207eef1d79e1ce9d1a7 # v5.2.1
+        with:
+          image-name: ${{ needs.set-env.outputs.image-name }}
+          azure-acr-name: ${{ secrets.ACR_NAME }}
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          azure-acr-client-id: ${{ secrets.ACR_CLIENT_ID }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID || '' }}
+          AZURE_SUBSCRIPTION: ${{ secrets.AZURE_SUBSCRIPTION_ID || '' }}
+          AZURE_ACR_CLIENT_ID: ${{ secrets.ACR_CLIENT_ID || '' }}
+
+      - name: Release
+        uses: DFE-Digital/deploy-azure-container-apps-action/.github/actions/deploy@8e72e403f05ff9da09668207eef1d79e1ce9d1a7 # v5.2.1
+        with:
+          image-name: ${{ needs.set-env.outputs.image-name }}
+          annotate-release: 'yes'
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          azure-acr-name: ${{ secrets.ACR_NAME }}
+          azure-aca-client-id: ${{ secrets.ACA_CLIENT_ID }}
+          azure-aca-name: ${{ secrets.ACA_NAME }}
+          azure-aca-resource-group: ${{ secrets.ACA_RESOURCE_GROUP }}
+        env:
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID || '' }}
+          AZURE_SUBSCRIPTION: ${{ secrets.AZURE_SUBSCRIPTION_ID || '' }}
+          AZURE_ACA_CLIENT_ID: ${{ secrets.ACA_CLIENT_ID || '' }}
