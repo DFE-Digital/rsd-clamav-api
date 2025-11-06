@@ -13,6 +13,8 @@ It’s designed for local development, testing, and service integration — all 
 - 🔄 **Automatic virus database updates** at start-up.
 - 🧠 **Swagger UI** for easy manual testing (`/swagger`).
 - 💬 **Endpoints** for scanning, health checks, and ClamAV version info.
+- ⚡ **Async scanning support** – Upload large files and poll for results (ideal for files >10MB).
+- 🎯 **Performance optimized** – Tuned ClamAV settings for faster scanning.
 - 💾 **Persistent database volume** so virus definitions are reused between restarts.
 - 🔒 **Stateless HTTP interface** – ideal for CI pipelines or microservices.
 
@@ -63,22 +65,24 @@ This will:
 |:-------|:----------|:-------------|
 | `GET` | `/healthz` | Health check endpoint |
 | `GET` | `/version` | Returns ClamAV engine & database version |
-| `POST` | `/scan` | Upload a file to scan for viruses |
+| `POST` | `/scan` | Upload a file to scan for viruses (synchronous - waits for results) |
+| `POST` | `/scan/async` | Upload a file for async scanning (returns job ID immediately) |
+| `GET` | `/scan/async/{jobId}` | Check status of an async scan job |
+| `GET` | `/scan/jobs` | List recent scan jobs (for monitoring) |
 | `GET` | `/swagger` | OpenAPI documentation & interactive UI |
 
----
 
 ## 🔍 Test Examples
 
 ### 🧪 Via Swagger UI
 Open **[http://localhost:8080/swagger](http://localhost:8080/swagger)** in your browser.  
-You’ll see interactive endpoints — you can upload files directly under `/scan`.
+You'll see interactive endpoints — you can upload files directly under `/scan` or `/scan/async`.
 
 ---
 
 ### 🧾 Via `curl`
 
-#### 1️⃣ Clean file
+#### 1️⃣ Clean file (Synchronous)
 ```bash
 echo "hello" > clean.txt
 curl -F "file=@clean.txt" http://localhost:8080/scan
@@ -86,10 +90,10 @@ curl -F "file=@clean.txt" http://localhost:8080/scan
 
 Expected response:
 ```json
-{ "status": "clean", "file": "clean.txt", "size": 6 }
+{ "status": "clean", "engine": "clamav", "fileName": "clean.txt", "size": 6, "scanDurationMs": 123.4 }
 ```
 
-#### 2️⃣ EICAR test virus
+#### 2️⃣ EICAR test virus (Synchronous)
 ```bash
 echo "X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*" > eicar.txt
 curl -F "file=@eicar.txt" http://localhost:8080/scan
@@ -97,10 +101,24 @@ curl -F "file=@eicar.txt" http://localhost:8080/scan
 
 Expected response:
 ```json
-{ "status": "infected", "malware": "Eicar-Test-Signature", "file": "eicar.txt" }
+{ "status": "infected", "malware": "Win.Test.EICAR_HDB-1", "engine": "clamav", "fileName": "eicar.txt", "size": 68, "scanDurationMs": 234.5 }
 ```
 
-💡 *Note: Your local antivirus may delete the EICAR test file immediately – that’s normal.*
+#### 3️⃣ Large file (Asynchronous)
+```bash
+# Upload file
+curl -X POST http://localhost:8080/scan/async -F "file=@large-file.zip"
+
+# Returns immediately with:
+# { "jobId": "abc-123", "status": "queued", "statusUrl": "/scan/async/abc-123" }
+
+# Check status (poll until complete)
+curl http://localhost:8080/scan/async/abc-123
+```
+
+💡 *Note: Your local antivirus may delete the EICAR test file immediately – that's normal.*
+
+💡 *For large files (>10MB), use the async endpoint for better performance. See [ASYNC_API_GUIDE.md](ASYNC_API_GUIDE.md) for details.*
 
 ---
 
