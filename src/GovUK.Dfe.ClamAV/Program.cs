@@ -9,10 +9,23 @@ var builder = WebApplication.CreateBuilder(args);
 
 var maxFileSizeMb = int.TryParse(Environment.GetEnvironmentVariable("MAX_FILE_SIZE_MB"), out var m) ? m : 200;
 
+// Configure Kestrel for better upload performance
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = (long)maxFileSizeMb * 1024 * 1024;
+    options.Limits.MinRequestBodyDataRate = new Microsoft.AspNetCore.Server.Kestrel.Core.MinDataRate(
+        bytesPerSecond: 100,
+        gracePeriod: TimeSpan.FromSeconds(10));
+    options.Limits.RequestHeadersTimeout = TimeSpan.FromMinutes(2);
+});
+
 // Limit request body size to MAX_FILE_SIZE_MB
 builder.Services.Configure<FormOptions>(o =>
 {
     o.MultipartBodyLengthLimit = (long)maxFileSizeMb * 1024 * 1024;
+    o.ValueLengthLimit = int.MaxValue;
+    o.MultipartHeadersLengthLimit = int.MaxValue;
+    o.BufferBody = false; // Don't buffer in memory
 });
 
 builder.Services.AddEndpointsApiExplorer();
@@ -65,19 +78,28 @@ app.MapPost("/scan/async", async (
     if (file == null || file.Length == 0)
         return Results.BadRequest(new { error = "Missing or empty file" });
 
-    // Create job
+    // Create job FIRST (enables quick response)
     var jobId = jobService.CreateJob(file.FileName, file.Length);
 
-    // Read file data into memory (for background processing)
-    using var memoryStream = new MemoryStream();
-    await file.CopyToAsync(memoryStream);
-    var fileData = memoryStream.ToArray();
+    // Save to temp file (much faster than loading into memory)
+    var tempPath = Path.Combine(Path.GetTempPath(), $"clamav_{jobId}_{Path.GetFileName(file.FileName)}");
 
-    // Queue for background processing
+    try
+    {
+        await using var fileStream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, useAsync: true);
+        await file.CopyToAsync(fileStream);
+    }
+    catch (Exception ex)
+    {
+        jobService.UpdateJobStatus(jobId, "error", error: $"Failed to save file: {ex.Message}");
+        return Results.Problem("Failed to process upload", statusCode: 500);
+    }
+
+    // Queue for background processing (non-blocking)
     await channel.Writer.WriteAsync(new ScanRequest
     {
         JobId = jobId,
-        FileData = fileData
+        TempFilePath = tempPath
     });
 
     return Results.Accepted($"/scan/async/{jobId}", new
