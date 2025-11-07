@@ -67,6 +67,7 @@ This will:
 | `GET` | `/version` | Returns ClamAV engine & database version |
 | `POST` | `/scan` | Upload a file to scan for viruses (synchronous - waits for results) |
 | `POST` | `/scan/async` | Upload a file for async scanning (returns job ID immediately) |
+| `POST` | `/scan/async/url` | Download a file from URL and scan it asynchronously (with size validation) |
 | `GET` | `/scan/async/{jobId}` | Check status of an async scan job |
 | `GET` | `/scan/jobs` | List recent scan jobs (for monitoring) |
 | `GET` | `/swagger` | OpenAPI documentation & interactive UI |
@@ -116,9 +117,33 @@ curl -X POST http://localhost:8080/scan/async -F "file=@large-file.zip"
 curl http://localhost:8080/scan/async/abc-123
 ```
 
+#### 4️⃣ Scan file from URL (Asynchronous)
+```bash
+# Scan a file from URL
+curl -X POST http://localhost:8080/scan/async/url \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com/documents/report.pdf"}'
+
+# Returns immediately with:
+# { "jobId": "def-456", "status": "queued", "statusUrl": "/scan/async/def-456", "sourceUrl": "https://example.com/documents/report.pdf" }
+
+# Check status (poll until complete)
+curl http://localhost:8080/scan/async/def-456
+```
+
+💡 **URL Scanning Features:**
+- **Request Format**: JSON body with `url` property
+- **Unique Filenames**: All downloaded files get unique names (timestamp + GUID) to prevent conflicts across multiple instances/jobs
+  - Example: `report_20241107123045_a1b2c3d4e5f6.pdf` (from `report.pdf`)
+  - Example: `example_com_20241107123045_a1b2c3d4e5f6.bin` (from URL with no filename)
+- **Size Validation**: Checks `Content-Length` header before downloading (if available)
+- **Real-time Monitoring**: Monitors download size in real-time if `Content-Length` is not available
+- **Auto-cleanup**: Cancels download and deletes partial file if size limit is exceeded
+- **Status Code**: Returns `413 Payload Too Large` if file exceeds `MAX_FILE_SIZE_MB`
+
 💡 *Note: Your local antivirus may delete the EICAR test file immediately – that's normal.*
 
-💡 *For large files (>10MB), use the async endpoint for better performance.*
+💡 *For large files (>10MB), use the async endpoints for better performance.*
 
 ---
 

@@ -1,3 +1,4 @@
+using GovUK.Dfe.ClamAV.Models;
 using GovUK.Dfe.ClamAV.Services;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.OpenApi.Models;
@@ -142,6 +143,66 @@ app.MapGet("/scan/async/{jobId}", (string jobId, IScanJobService jobService) =>
 .Produces(404)
 .WithName("GetScanStatus")
 .WithDescription("Get the status of an asynchronous scan job");
+
+// Async Scan from URL
+app.MapPost("/scan/async/url", async (
+    ScanUrlRequest urlRequest,
+    IScanJobService jobService,
+    Channel<ScanRequest> channel) =>
+{
+    if (string.IsNullOrWhiteSpace(urlRequest.Url))
+        return Results.BadRequest(new { error = "URL is required" });
+
+    var fileUrl = urlRequest.Url;
+
+    // Validate URL format
+    if (!Uri.TryCreate(fileUrl, UriKind.Absolute, out var uri) || 
+        (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+    {
+        return Results.BadRequest(new { error = "Invalid URL. Must be a valid HTTP or HTTPS URL." });
+    }
+
+    // Extract original filename from URL (no modifications)
+    var fileName = Path.GetFileName(uri.LocalPath);
+    if (string.IsNullOrWhiteSpace(fileName) || fileName == "/" || fileName == "\\")
+    {
+        // No filename in URL, use domain name
+        fileName = $"{uri.Host.Replace(".", "_")}.bin";
+    }
+
+    // Create job immediately with "downloading" status
+    var jobId = jobService.CreateJob(fileName, 0);
+    jobService.UpdateJobStatus(jobId, "downloading");
+
+    // Create unique temp file path (to avoid disk conflicts between jobs)
+    var tempPath = Path.Combine(Path.GetTempPath(), $"clamav_{jobId}_{Guid.NewGuid():N}_{fileName}");
+
+    var maxFileSizeBytes = (long)maxFileSizeMb * 1024 * 1024;
+
+    // Queue for background processing (download + scan)
+    await channel.Writer.WriteAsync(new ScanRequest
+    {
+        JobId = jobId,
+        TempFilePath = tempPath,
+        SourceUrl = fileUrl,
+        MaxFileSize = maxFileSizeBytes
+    });
+
+    return Results.Accepted($"/scan/async/{jobId}", new
+    {
+        jobId,
+        status = "downloading",
+        fileName,
+        message = "Download started. Use the jobId to check status.",
+        statusUrl = $"/scan/async/{jobId}",
+        sourceUrl = fileUrl
+    });
+})
+.Accepts<ScanUrlRequest>("application/json")
+.Produces(202)
+.Produces(400)
+.WithName("ScanAsyncUrl")
+.WithDescription("Download a file from a URL and scan it asynchronously. Returns immediately with job ID. Download and scan happen in background.");
 
 app.MapPost("/scan", async (IFormFile file) =>
 {
