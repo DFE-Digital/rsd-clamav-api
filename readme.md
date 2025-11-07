@@ -20,19 +20,143 @@ It’s designed for local development, testing, and service integration — all 
 
 ---
 
+## 🏗️ Architecture Diagram
+
+```mermaid
+graph TB
+    subgraph "Client Layer"
+        Client[Client/User]
+    end
+
+    subgraph "API Endpoints"
+        HealthEP["/healthz<br/>/version"]
+        SyncEP["/scan<br/>(Synchronous)"]
+        AsyncEP["/scan/async<br/>(File Upload)"]
+        UrlEP["/scan/async/url<br/>(URL Download)"]
+        StatusEP["/scan/async/{jobId}<br/>(Check Status)"]
+        JobsEP["/scan/jobs<br/>(List Jobs)"]
+    end
+
+    subgraph "Handlers"
+        FileScanHandler["FileScanHandler<br/>- HandleSyncAsync()<br/>- HandleAsyncAsync()"]
+        UrlScanHandler["UrlScanHandler<br/>- HandleAsync()<br/>- Base64 Decode"]
+    end
+
+    subgraph "Services"
+        JobService["ScanJobService<br/>- CreateJob()<br/>- UpdateJobStatus()<br/>- GetJob()"]
+        ClamService["ClamAvInfoService<br/>- GetVersionAsync()"]
+    end
+
+    subgraph "Background Processing"
+        Channel["Bounded Channel<br/>(Queue: 100 jobs)"]
+        BGService["BackgroundScanService<br/>- ProcessScanRequest()<br/>- DownloadFileAsync()"]
+    end
+
+    subgraph "Storage"
+        TempFiles["Temp File Storage<br/>/tmp/clamav_*"]
+        JobMemory["In-Memory Job Store<br/>(ConcurrentDictionary)"]
+    end
+
+    subgraph "ClamAV Engine"
+        ClamD["ClamAV Daemon<br/>(clamd)"]
+        VirusDB["Virus Database<br/>(Updated via freshclam)"]
+    end
+
+    Client -->|GET| HealthEP
+    Client -->|POST multipart| SyncEP
+    Client -->|POST multipart| AsyncEP
+    Client -->|POST JSON| UrlEP
+    Client -->|GET| StatusEP
+    Client -->|GET| JobsEP
+
+    HealthEP --> ClamService
+    SyncEP --> FileScanHandler
+    AsyncEP --> FileScanHandler
+    UrlEP --> UrlScanHandler
+
+    FileScanHandler -->|Sync: Direct scan| ClamD
+    FileScanHandler -->|Async: Save & Queue| TempFiles
+    FileScanHandler -->|Create job| JobService
+    UrlScanHandler -->|Create job + Queue| Channel
+
+    TempFiles -->|Enqueue| Channel
+    Channel -->|Process| BGService
+
+    BGService -->|Download from URL| TempFiles
+    BGService -->|Update status:<br/>downloading→scanning| JobService
+    BGService -->|Scan file| ClamD
+    BGService -->|Update status:<br/>clean/infected/error| JobService
+    BGService -->|Cleanup| TempFiles
+
+    StatusEP --> JobService
+    JobsEP --> JobService
+    JobService --> JobMemory
+
+    ClamD --> VirusDB
+
+    style Client fill:#e1f5ff
+    style SyncEP fill:#fff3cd
+    style AsyncEP fill:#d4edda
+    style UrlEP fill:#d4edda
+    style StatusEP fill:#cce5ff
+    style BGService fill:#f8d7da
+    style ClamD fill:#d6d8db
+    style Channel fill:#ffeaa7
+```
+
+### Flow Descriptions
+
+**Synchronous Scan Flow:**
+1. Client uploads file to `/scan`
+2. API immediately scans with ClamAV
+3. Returns result (clean/infected/error)
+
+**Asynchronous File Upload Flow:**
+1. Client uploads file to `/scan/async`
+2. File saved to temp storage
+3. Job created with "queued" status
+4. Job ID returned immediately
+5. Background service picks up job
+6. Status: queued → scanning → clean/infected/error
+7. Client polls `/scan/async/{jobId}` for status
+
+**Asynchronous URL Download Flow:**
+1. Client sends URL (optional Base64) to `/scan/async/url`
+2. Job created with "downloading" status
+3. Job ID returned immediately
+4. Background service downloads file
+5. Status: downloading → scanning → clean/infected/error
+6. Client polls `/scan/async/{jobId}` for status
+
+---
+
 ## 📁 Project Structure
 
 ```
 .
-├── Dockerfile                # Builds .NET API + installs ClamAV
-├── docker-compose.yml        # Runs the container locally
+├── Dockerfile                          # Builds .NET API + installs ClamAV
+├── docker-compose.yml                  # Runs the container locally
 ├── scripts/
-│   └── start.sh              # Starts ClamAV & the API
+│   └── start.sh                        # Starts ClamAV & the API
 ├── conf/
-│   ├── clamd.conf            # ClamAV daemon configuration
-│   └── freshclam.conf        # Freshclam configuration
+│   ├── clamd.conf                      # ClamAV daemon configuration
+│   └── freshclam.conf                  # Freshclam configuration
 └── src/
-    └── GovUK.Dfe.ClamAV/     # .NET 8 API project
+    └── GovUK.Dfe.ClamAV/               # .NET 8 API project
+        ├── Program.cs                  # Application entry point & DI configuration
+        ├── Endpoints/                  # Endpoint route definitions
+        │   ├── HealthEndpoints.cs      # Health check & version endpoints
+        │   └── ScanEndpoints.cs        # All scan-related endpoints
+        ├── Handlers/                   # Business logic handlers
+        │   ├── FileScanHandler.cs      # Handles file upload scans
+        │   └── UrlScanHandler.cs       # Handles URL download scans
+        ├── Services/                   # Background & domain services
+        │   ├── BackgroundScanService.cs    # Background job processor
+        │   ├── ScanJobService.cs           # Job tracking & management
+        │   └── ClamAvInfoService.cs        # ClamAV version info
+        └── Models/                     # Data models
+            ├── ScanJob.cs              # Job tracking model
+            └── ScanUrlRequest.cs       # URL scan request model
 ```
 
 ---
