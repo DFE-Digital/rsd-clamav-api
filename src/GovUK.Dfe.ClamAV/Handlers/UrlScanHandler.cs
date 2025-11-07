@@ -29,6 +29,20 @@ public class UrlScanHandler
 
         var fileUrl = urlRequest.Url;
 
+        // Decode from Base64 if needed
+        if (urlRequest.IsBase64)
+        {
+            try
+            {
+                var bytes = Convert.FromBase64String(fileUrl);
+                fileUrl = System.Text.Encoding.UTF8.GetString(bytes);
+            }
+            catch (FormatException)
+            {
+                return Results.BadRequest(new { error = "Invalid Base64 encoded URL" });
+            }
+        }
+
         if (!Uri.TryCreate(fileUrl, UriKind.Absolute, out var uri) ||
             (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
         {

@@ -39,7 +39,7 @@ public static class ScanEndpoints
             .Produces(202)
             .Produces(400)
             .WithName("ScanAsyncUrl")
-            .WithDescription("Download a file from a URL and scan it asynchronously. Returns immediately with job ID. Download and scan happen in background.");
+            .WithDescription("Download a file from a URL and scan it asynchronously. Returns immediately with job ID. Download and scan happen in background. Set 'isBase64' to true if the URL is Base64 encoded.");
 
         // Check scan status
         scanGroup.MapGet("/async/{jobId}", (string jobId, IScanJobService jobService) =>

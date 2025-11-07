@@ -124,22 +124,27 @@ curl -X POST http://localhost:8080/scan/async/url \
   -H "Content-Type: application/json" \
   -d '{"url": "https://example.com/documents/report.pdf"}'
 
+# Scan with Base64 encoded URL
+curl -X POST http://localhost:8080/scan/async/url \
+  -H "Content-Type: application/json" \
+  -d '{"url": "aHR0cHM6Ly9leGFtcGxlLmNvbS9kb2N1bWVudHMvcmVwb3J0LnBkZg==", "isBase64": true}'
+
 # Returns immediately with:
-# { "jobId": "def-456", "status": "queued", "statusUrl": "/scan/async/def-456", "sourceUrl": "https://example.com/documents/report.pdf" }
+# { "jobId": "def-456", "status": "downloading", "statusUrl": "/scan/async/def-456", "sourceUrl": "https://example.com/documents/report.pdf" }
 
 # Check status (poll until complete)
 curl http://localhost:8080/scan/async/def-456
 ```
 
 💡 **URL Scanning Features:**
-- **Request Format**: JSON body with `url` property
-- **Unique Filenames**: All downloaded files get unique names (timestamp + GUID) to prevent conflicts across multiple instances/jobs
-  - Example: `report_20241107123045_a1b2c3d4e5f6.pdf` (from `report.pdf`)
-  - Example: `example_com_20241107123045_a1b2c3d4e5f6.bin` (from URL with no filename)
+- **Request Format**: JSON body with `url` property and optional `isBase64` flag
+- **Base64 Support**: Set `isBase64` to `true` if URL is Base64 encoded
+- **Original Filenames**: Preserves the original filename from the URL
+- **Async Download**: Returns job ID immediately, download happens in background
+- **Status Tracking**: Use "downloading" → "scanning" → "clean"/"infected"/"error" status flow
 - **Size Validation**: Checks `Content-Length` header before downloading (if available)
 - **Real-time Monitoring**: Monitors download size in real-time if `Content-Length` is not available
 - **Auto-cleanup**: Cancels download and deletes partial file if size limit is exceeded
-- **Status Code**: Returns `413 Payload Too Large` if file exceeds `MAX_FILE_SIZE_MB`
 
 💡 *Note: Your local antivirus may delete the EICAR test file immediately – that's normal.*
 
