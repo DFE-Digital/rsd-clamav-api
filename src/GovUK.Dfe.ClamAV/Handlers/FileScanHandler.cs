@@ -1,13 +1,14 @@
 using GovUK.Dfe.ClamAV.Services;
+using GovUK.Dfe.CoreLibs.AsyncProcessing.Interfaces;
 using nClam;
 using System.Net;
-using System.Threading.Channels;
 
 namespace GovUK.Dfe.ClamAV.Handlers;
 
 public class FileScanHandler(
     IScanJobService jobService,
-    Channel<ScanRequest> channel,
+    IScanProcessingService scanProcessing,
+    IBackgroundServiceFactory backgroundService,
     IConfiguration configuration)
 {
     public async Task<IResult> HandleSyncAsync(IFormFile file)
@@ -61,7 +62,7 @@ public class FileScanHandler(
         // Create job first
         var jobId = jobService.CreateJob(file.FileName, file.Length);
 
-        // Save to temp file (magic happens here, much faster than loading into memory)
+        // Save to temp file
         var tempPath = Path.Combine(Path.GetTempPath(), $"clamav_{jobId}_{Path.GetFileName(file.FileName)}");
 
         try
@@ -75,11 +76,10 @@ public class FileScanHandler(
             return Results.Problem("Failed to process upload", statusCode: 500);
         }
 
-        // Queue for background processing 
-        await channel.Writer.WriteAsync(new ScanRequest
+        // Enqueue for background processing
+        _ = backgroundService.EnqueueTask(async (ct) =>
         {
-            JobId = jobId,
-            TempFilePath = tempPath
+            return await scanProcessing.ProcessFileScanAsync(jobId, tempPath, ct);
         });
 
         return Results.Accepted($"/scan/async/{jobId}", new

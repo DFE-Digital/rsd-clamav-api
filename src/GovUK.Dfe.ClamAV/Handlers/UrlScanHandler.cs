@@ -1,22 +1,25 @@
 using GovUK.Dfe.ClamAV.Models;
 using GovUK.Dfe.ClamAV.Services;
-using System.Threading.Channels;
+using GovUK.Dfe.CoreLibs.AsyncProcessing.Interfaces;
 
 namespace GovUK.Dfe.ClamAV.Handlers;
 
 public class UrlScanHandler
 {
     private readonly IScanJobService _jobService;
-    private readonly Channel<ScanRequest> _channel;
+    private readonly IScanProcessingService _scanProcessing;
+    private readonly IBackgroundServiceFactory _backgroundService;
     private readonly int _maxFileSizeMb;
 
     public UrlScanHandler(
         IScanJobService jobService,
-        Channel<ScanRequest> channel,
+        IScanProcessingService scanProcessing,
+        IBackgroundServiceFactory backgroundService,
         IConfiguration configuration)
     {
         _jobService = jobService;
-        _channel = channel;
+        _scanProcessing = scanProcessing;
+        _backgroundService = backgroundService;
         _maxFileSizeMb = int.TryParse(
             configuration["MAX_FILE_SIZE_MB"] ?? Environment.GetEnvironmentVariable("MAX_FILE_SIZE_MB"),
             out var m) ? m : 200;
@@ -62,16 +65,12 @@ public class UrlScanHandler
         _jobService.UpdateJobStatus(jobId, "downloading");
 
         var tempPath = Path.Combine(Path.GetTempPath(), $"clamav_{jobId}_{Guid.NewGuid():N}_{fileName}");
-
         var maxFileSizeBytes = (long)_maxFileSizeMb * 1024 * 1024;
 
-        // Queue for background processing (download + scan)
-        await _channel.Writer.WriteAsync(new ScanRequest
+        // Enqueue for background processing
+        _ = _backgroundService.EnqueueTask(async (ct) =>
         {
-            JobId = jobId,
-            TempFilePath = tempPath,
-            SourceUrl = fileUrl,
-            MaxFileSize = maxFileSizeBytes
+            return await _scanProcessing.ProcessUrlScanAsync(jobId, fileUrl, tempPath, maxFileSizeBytes, ct);
         });
 
         return Results.Accepted($"/scan/async/{jobId}", new

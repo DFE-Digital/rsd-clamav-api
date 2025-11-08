@@ -1,9 +1,9 @@
 using GovUK.Dfe.ClamAV.Endpoints;
 using GovUK.Dfe.ClamAV.Handlers;
 using GovUK.Dfe.ClamAV.Services;
+using GovUK.Dfe.CoreLibs.AsyncProcessing.Configurations;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.OpenApi.Models;
-using System.Threading.Channels;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -43,19 +43,21 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddSingleton<IClamAvInfoService, ClamAvInfoService>();
 builder.Services.AddSingleton<IScanJobService, ScanJobService>();
 
+// Register processing service
+builder.Services.AddScoped<IScanProcessingService, ScanProcessingService>();
+
 // Register handlers
 builder.Services.AddScoped<FileScanHandler>();
 builder.Services.AddScoped<UrlScanHandler>();
 
-// Create channel for background processing (bounded to prevent memory issues)
-var scanChannel = Channel.CreateBounded<ScanRequest>(new BoundedChannelOptions(100)
-{
-    FullMode = BoundedChannelFullMode.Wait
-});
-builder.Services.AddSingleton(scanChannel);
+// Add background service factory with parallelism
+builder.Services.AddBackgroundServiceWithParallelism(
+    maxConcurrentWorkers: 4,
+    channelCapacity: 100
+);
 
-// Register background service
-builder.Services.AddHostedService<BackgroundScanService>();
+// Register job cleanup service
+builder.Services.AddHostedService<JobCleanupService>();
 
 var app = builder.Build();
 
