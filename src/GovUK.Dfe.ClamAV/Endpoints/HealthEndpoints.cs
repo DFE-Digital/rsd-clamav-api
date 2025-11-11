@@ -18,7 +18,7 @@ public static class HealthEndpoints
             var version = await clam.GetVersionAsync();
             return Results.Ok(new { clamavVersion = version });
         })
-        .RequireAuthorization()
+        .RequireAuthorization("CanRead")
         .WithTags("Health")
         .WithName("GetVersion")
         .WithDescription("Get ClamAV version information");
