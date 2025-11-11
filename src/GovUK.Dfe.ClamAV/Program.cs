@@ -2,7 +2,12 @@ using GovUK.Dfe.ClamAV.Endpoints;
 using GovUK.Dfe.ClamAV.Handlers;
 using GovUK.Dfe.ClamAV.Services;
 using GovUK.Dfe.CoreLibs.AsyncProcessing.Configurations;
+using GovUK.Dfe.CoreLibs.Security.Authorization;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Identity.Web;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -28,6 +33,12 @@ builder.Services.Configure<FormOptions>(o =>
     o.BufferBody = false; // Don't buffer in memory
 });
 
+// Add Azure AD authentication
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddMicrosoftIdentityWebApi(builder.Configuration.GetSection("AzureAd"));
+
+builder.Services.AddApplicationAuthorization(builder.Configuration);
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -35,7 +46,37 @@ builder.Services.AddSwaggerGen(c =>
     {
         Title = "ClamAV Scan API",
         Version = "v1",
-        Description = "API wrapper for ClamAV virus scanning with async job support"
+        Description = "API wrapper for ClamAV virus scanning with async job support (Azure AD Secured)"
+    });
+
+    // Add Azure AD authentication to Swagger
+    c.AddSecurityDefinition("oauth2", new OpenApiSecurityScheme
+    {
+        Type = SecuritySchemeType.OAuth2,
+        Flows = new OpenApiOAuthFlows
+        {
+            ClientCredentials = new OpenApiOAuthFlow
+            {
+                TokenUrl = new Uri($"{builder.Configuration["AzureAd:Instance"]}{builder.Configuration["AzureAd:TenantId"]}/oauth2/v2.0/token"),
+                Scopes = new Dictionary<string, string>()
+            }
+        },
+        Description = "Azure AD OAuth2 Client Credentials Flow"
+    });
+
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "oauth2"
+                }
+            },
+            Array.Empty<string>()
+        }
     });
 });
 
@@ -66,6 +107,10 @@ app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "ClamAV Scan API v1");
 });
+
+// Add authentication & authorization middleware
+app.UseAuthentication();
+app.UseAuthorization();
 
 // Map endpoints
 app.MapHealthEndpoints();
