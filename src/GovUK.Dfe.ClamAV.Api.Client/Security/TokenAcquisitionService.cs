@@ -47,7 +47,7 @@ namespace GovUK.Dfe.ClamAV.Api.Client.Security
         {
             try
             {
-                var context = new TokenRequestContext(new[] { _settings.Scope });
+                var context = new TokenRequestContext(new string[] { _settings.Scope! });
                 var token = await _credential.Value.GetTokenAsync(context, cancellationToken);
 
                 if (string.IsNullOrWhiteSpace(token.Token))
