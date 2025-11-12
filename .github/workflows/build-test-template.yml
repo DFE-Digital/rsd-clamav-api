@@ -16,9 +16,6 @@ on:
         type: boolean
         default: true
         description: "Flag to run or skip tests"
-    secrets:
-      SONAR_TOKEN:
-        required: true
 env:
   DOTNET_VERSION: '8.0.x'
   EF_VERSION: '6.0.5'
