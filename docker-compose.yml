@@ -13,6 +13,7 @@ services:
       CLAMD_HOST: 127.0.0.1
       CLAMD_PORT: 3310
       MAX_FILE_SIZE_MB: 200
+      CI: true
     volumes:
       - clamav-db:/var/lib/clamav
     restart: unless-stopped

@@ -80,6 +80,8 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
+builder.Services.AddOpenApiDocument(configure => { configure.Title = "ClamAv Api"; });
+
 // Register services
 builder.Services.AddSingleton<IClamAvInfoService, ClamAvInfoService>();
 builder.Services.AddSingleton<IScanJobService, ScanJobService>();
