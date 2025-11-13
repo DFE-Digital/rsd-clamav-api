@@ -30,32 +30,227 @@ namespace GovUK.Dfe.ClamAV.Api.Client.Contracts
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <exception cref="ClamAvApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task HealthCheckAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<HealthResponse> HealthCheckAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <exception cref="ClamAvApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task GetVersionAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<VersionResponse> GetVersionAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <exception cref="ClamAvApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task ScanSyncAsync(FileParameter file = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<ScanResponse> ScanSyncAsync(FileParameter file = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <exception cref="ClamAvApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task ScanAsync(FileParameter file = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<AsyncScanResponse> ScanAsync(FileParameter file = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <exception cref="ClamAvApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task ScanAsyncUrlAsync(ScanUrlRequest urlRequest, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<AsyncScanResponse> ScanAsyncUrlAsync(ScanUrlRequest urlRequest, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <exception cref="ClamAvApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task GetScanStatusAsync(string jobId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<ScanStatusResponse> GetScanStatusAsync(string jobId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
         /// <param name="cancellationToken">A cancellation token that can be used by other objects or threads to receive notice of cancellation.</param>
         /// <exception cref="ClamAvApiException">A server side error occurred.</exception>
-        System.Threading.Tasks.Task ListJobsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
+        System.Threading.Tasks.Task<JobsListResponse> ListJobsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken));
 
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class HealthResponse
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
+        public string Status { get; set; }
+
+        public string ToJson()
+        {
+
+            var options = new System.Text.Json.JsonSerializerOptions();
+
+            var converters = new System.Text.Json.Serialization.JsonConverter[] { new System.Text.Json.Serialization.JsonStringEnumConverter() };
+            foreach(var converter in converters)
+                options.Converters.Add(converter);
+
+            return System.Text.Json.JsonSerializer.Serialize(this, options);
+
+        }
+        public static HealthResponse FromJson(string data)
+        {
+
+            var options = new System.Text.Json.JsonSerializerOptions();
+
+            var converters = new System.Text.Json.Serialization.JsonConverter[] { new System.Text.Json.Serialization.JsonStringEnumConverter() };
+            foreach(var converter in converters)
+                options.Converters.Add(converter);
+
+            return System.Text.Json.JsonSerializer.Deserialize<HealthResponse>(data, options);
+
+        }
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class VersionResponse
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("clamAvVersion")]
+        public string ClamAvVersion { get; set; }
+
+        public string ToJson()
+        {
+
+            var options = new System.Text.Json.JsonSerializerOptions();
+
+            var converters = new System.Text.Json.Serialization.JsonConverter[] { new System.Text.Json.Serialization.JsonStringEnumConverter() };
+            foreach(var converter in converters)
+                options.Converters.Add(converter);
+
+            return System.Text.Json.JsonSerializer.Serialize(this, options);
+
+        }
+        public static VersionResponse FromJson(string data)
+        {
+
+            var options = new System.Text.Json.JsonSerializerOptions();
+
+            var converters = new System.Text.Json.Serialization.JsonConverter[] { new System.Text.Json.Serialization.JsonStringEnumConverter() };
+            foreach(var converter in converters)
+                options.Converters.Add(converter);
+
+            return System.Text.Json.JsonSerializer.Deserialize<VersionResponse>(data, options);
+
+        }
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class ScanResponse
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
+        public string Status { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("engine")]
+        public string Engine { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("malware")]
+        public string Malware { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("fileName")]
+        public string FileName { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("size")]
+        public long Size { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("scanDurationMs")]
+        public double ScanDurationMs { get; set; }
+
+        public string ToJson()
+        {
+
+            var options = new System.Text.Json.JsonSerializerOptions();
+
+            var converters = new System.Text.Json.Serialization.JsonConverter[] { new System.Text.Json.Serialization.JsonStringEnumConverter() };
+            foreach(var converter in converters)
+                options.Converters.Add(converter);
+
+            return System.Text.Json.JsonSerializer.Serialize(this, options);
+
+        }
+        public static ScanResponse FromJson(string data)
+        {
+
+            var options = new System.Text.Json.JsonSerializerOptions();
+
+            var converters = new System.Text.Json.Serialization.JsonConverter[] { new System.Text.Json.Serialization.JsonStringEnumConverter() };
+            foreach(var converter in converters)
+                options.Converters.Add(converter);
+
+            return System.Text.Json.JsonSerializer.Deserialize<ScanResponse>(data, options);
+
+        }
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class ErrorResponse
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("error")]
+        public string Error { get; set; }
+
+        public string ToJson()
+        {
+
+            var options = new System.Text.Json.JsonSerializerOptions();
+
+            var converters = new System.Text.Json.Serialization.JsonConverter[] { new System.Text.Json.Serialization.JsonStringEnumConverter() };
+            foreach(var converter in converters)
+                options.Converters.Add(converter);
+
+            return System.Text.Json.JsonSerializer.Serialize(this, options);
+
+        }
+        public static ErrorResponse FromJson(string data)
+        {
+
+            var options = new System.Text.Json.JsonSerializerOptions();
+
+            var converters = new System.Text.Json.Serialization.JsonConverter[] { new System.Text.Json.Serialization.JsonStringEnumConverter() };
+            foreach(var converter in converters)
+                options.Converters.Add(converter);
+
+            return System.Text.Json.JsonSerializer.Deserialize<ErrorResponse>(data, options);
+
+        }
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class AsyncScanResponse
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("jobId")]
+        public string JobId { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
+        public string Status { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("fileName")]
+        public string FileName { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("message")]
+        public string Message { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("statusUrl")]
+        public string StatusUrl { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("sourceUrl")]
+        public string SourceUrl { get; set; }
+
+        public string ToJson()
+        {
+
+            var options = new System.Text.Json.JsonSerializerOptions();
+
+            var converters = new System.Text.Json.Serialization.JsonConverter[] { new System.Text.Json.Serialization.JsonStringEnumConverter() };
+            foreach(var converter in converters)
+                options.Converters.Add(converter);
+
+            return System.Text.Json.JsonSerializer.Serialize(this, options);
+
+        }
+        public static AsyncScanResponse FromJson(string data)
+        {
+
+            var options = new System.Text.Json.JsonSerializerOptions();
+
+            var converters = new System.Text.Json.Serialization.JsonConverter[] { new System.Text.Json.Serialization.JsonStringEnumConverter() };
+            foreach(var converter in converters)
+                options.Converters.Add(converter);
+
+            return System.Text.Json.JsonSerializer.Deserialize<AsyncScanResponse>(data, options);
+
+        }
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
@@ -90,6 +285,153 @@ namespace GovUK.Dfe.ClamAV.Api.Client.Contracts
                 options.Converters.Add(converter);
 
             return System.Text.Json.JsonSerializer.Deserialize<ScanUrlRequest>(data, options);
+
+        }
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class ScanStatusResponse
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("jobId")]
+        public string JobId { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
+        public string Status { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("fileName")]
+        public string FileName { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("fileSize")]
+        public long? FileSize { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("engine")]
+        public string Engine { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("malware")]
+        public string Malware { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("error")]
+        public string Error { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
+        public System.DateTime CreatedAt { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("completedAt")]
+        public System.DateTime? CompletedAt { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("scanDurationMs")]
+        public double? ScanDurationMs { get; set; }
+
+        public string ToJson()
+        {
+
+            var options = new System.Text.Json.JsonSerializerOptions();
+
+            var converters = new System.Text.Json.Serialization.JsonConverter[] { new System.Text.Json.Serialization.JsonStringEnumConverter() };
+            foreach(var converter in converters)
+                options.Converters.Add(converter);
+
+            return System.Text.Json.JsonSerializer.Serialize(this, options);
+
+        }
+        public static ScanStatusResponse FromJson(string data)
+        {
+
+            var options = new System.Text.Json.JsonSerializerOptions();
+
+            var converters = new System.Text.Json.Serialization.JsonConverter[] { new System.Text.Json.Serialization.JsonStringEnumConverter() };
+            foreach(var converter in converters)
+                options.Converters.Add(converter);
+
+            return System.Text.Json.JsonSerializer.Deserialize<ScanStatusResponse>(data, options);
+
+        }
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class JobsListResponse
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("jobs")]
+        public System.Collections.Generic.List<JobSummary> Jobs { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("count")]
+        public int Count { get; set; }
+
+        public string ToJson()
+        {
+
+            var options = new System.Text.Json.JsonSerializerOptions();
+
+            var converters = new System.Text.Json.Serialization.JsonConverter[] { new System.Text.Json.Serialization.JsonStringEnumConverter() };
+            foreach(var converter in converters)
+                options.Converters.Add(converter);
+
+            return System.Text.Json.JsonSerializer.Serialize(this, options);
+
+        }
+        public static JobsListResponse FromJson(string data)
+        {
+
+            var options = new System.Text.Json.JsonSerializerOptions();
+
+            var converters = new System.Text.Json.Serialization.JsonConverter[] { new System.Text.Json.Serialization.JsonStringEnumConverter() };
+            foreach(var converter in converters)
+                options.Converters.Add(converter);
+
+            return System.Text.Json.JsonSerializer.Deserialize<JobsListResponse>(data, options);
+
+        }
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class JobSummary
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("jobId")]
+        public string JobId { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("status")]
+        public string Status { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("fileName")]
+        public string FileName { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("fileSize")]
+        public long? FileSize { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("createdAt")]
+        public System.DateTime CreatedAt { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("completedAt")]
+        public System.DateTime? CompletedAt { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("scanDurationMs")]
+        public double? ScanDurationMs { get; set; }
+
+        public string ToJson()
+        {
+
+            var options = new System.Text.Json.JsonSerializerOptions();
+
+            var converters = new System.Text.Json.Serialization.JsonConverter[] { new System.Text.Json.Serialization.JsonStringEnumConverter() };
+            foreach(var converter in converters)
+                options.Converters.Add(converter);
+
+            return System.Text.Json.JsonSerializer.Serialize(this, options);
+
+        }
+        public static JobSummary FromJson(string data)
+        {
+
+            var options = new System.Text.Json.JsonSerializerOptions();
+
+            var converters = new System.Text.Json.Serialization.JsonConverter[] { new System.Text.Json.Serialization.JsonStringEnumConverter() };
+            foreach(var converter in converters)
+                options.Converters.Add(converter);
+
+            return System.Text.Json.JsonSerializer.Deserialize<JobSummary>(data, options);
 
         }
     }
