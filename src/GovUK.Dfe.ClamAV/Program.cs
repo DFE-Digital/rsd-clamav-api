@@ -1,12 +1,10 @@
 using GovUK.Dfe.ClamAV.Endpoints;
 using GovUK.Dfe.ClamAV.Handlers;
 using GovUK.Dfe.ClamAV.Services;
-using GovUK.Dfe.CoreLibs.AsyncProcessing.Configurations;
+using GovUK.Dfe.ClamAV.Swagger;
 using GovUK.Dfe.CoreLibs.Security.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Features;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Identity.Web;
 using Microsoft.OpenApi.Models;
 
@@ -49,36 +47,18 @@ builder.Services.AddSwaggerGen(c =>
         Description = "API wrapper for ClamAV virus scanning with async job support (Azure AD Secured)"
     });
 
-    // Add Azure AD authentication to Swagger
-    c.AddSecurityDefinition("oauth2", new OpenApiSecurityScheme
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Type = SecuritySchemeType.OAuth2,
-        Flows = new OpenApiOAuthFlows
-        {
-            ClientCredentials = new OpenApiOAuthFlow
-            {
-                TokenUrl = new Uri($"{builder.Configuration["AzureAd:Instance"]}{builder.Configuration["AzureAd:TenantId"]}/oauth2/v2.0/token"),
-                Scopes = new Dictionary<string, string>()
-            }
-        },
-        Description = "Azure AD OAuth2 Client Credentials Flow"
+        Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http,
+        Scheme = "Bearer"
     });
 
-    c.AddSecurityRequirement(new OpenApiSecurityRequirement
-    {
-        {
-            new OpenApiSecurityScheme
-            {
-                Reference = new OpenApiReference
-                {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "oauth2"
-                }
-            },
-            Array.Empty<string>()
-        }
-    });
+    c.OperationFilter<AuthenticationHeaderOperationFilter>();
 });
+
 
 builder.Services.AddOpenApiDocument(configure => { configure.Title = "ClamAv Api"; });
 

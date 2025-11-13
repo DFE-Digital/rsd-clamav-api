@@ -20,7 +20,7 @@ public static class HealthEndpoints
             var version = await clam.GetVersionAsync();
             return Results.Ok(new VersionResponse { ClamAvVersion = version });
         })
-        //.RequireAuthorization("CanRead")
+        .RequireAuthorization("CanRead")
         .WithTags("Health")
         .Produces<VersionResponse>(200)
         .WithName("GetVersion")
