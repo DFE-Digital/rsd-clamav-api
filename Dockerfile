@@ -3,7 +3,8 @@
 # =========================
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
-
+ARG CI
+ENV CI=${CI}
 
 # Copy only csproj and restore first
 COPY src/GovUK.Dfe.ClamAV/GovUK.Dfe.ClamAV.csproj GovUK.Dfe.ClamAV/
@@ -11,7 +12,7 @@ RUN dotnet restore GovUK.Dfe.ClamAV/GovUK.Dfe.ClamAV.csproj
 
 # Copy everything else and publish
 COPY src/GovUK.Dfe.ClamAV/ GovUK.Dfe.ClamAV/
-RUN dotnet publish GovUK.Dfe.ClamAV/GovUK.Dfe.ClamAV.csproj -c Release -o /app/publish /p:UseAppHost=false
+RUN dotnet publish GovUK.Dfe.ClamAV/GovUK.Dfe.ClamAV.csproj -c Release -p:CI=true -o /app/publish /p:UseAppHost=false
 
 # =========================
 # Final stage: ASP.NET runtime + ClamAV

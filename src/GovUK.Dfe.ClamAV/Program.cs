@@ -1,11 +1,22 @@
 using GovUK.Dfe.ClamAV.Endpoints;
 using GovUK.Dfe.ClamAV.Handlers;
 using GovUK.Dfe.ClamAV.Services;
-using GovUK.Dfe.CoreLibs.AsyncProcessing.Configurations;
+using GovUK.Dfe.ClamAV.Swagger;
+using GovUK.Dfe.CoreLibs.Security.Authorization;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.Identity.Web;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configure to read from appsettings.json and environment-specific files
+builder.Configuration
+    .SetBasePath(builder.Environment.ContentRootPath)
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
+    .AddEnvironmentVariables()
+    .AddCommandLine(args);
 
 var maxFileSizeMb = int.TryParse(Environment.GetEnvironmentVariable("MAX_FILE_SIZE_MB"), out var m) ? m : 200;
 
@@ -28,6 +39,12 @@ builder.Services.Configure<FormOptions>(o =>
     o.BufferBody = false; // Don't buffer in memory
 });
 
+// Add Azure AD authentication
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddMicrosoftIdentityWebApi(builder.Configuration.GetSection("AzureAd"));
+
+builder.Services.AddApplicationAuthorization(builder.Configuration);
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -35,9 +52,23 @@ builder.Services.AddSwaggerGen(c =>
     {
         Title = "ClamAV Scan API",
         Version = "v1",
-        Description = "API wrapper for ClamAV virus scanning with async job support"
+        Description = "API wrapper for ClamAV virus scanning with async job support (Azure AD Secured)"
     });
+
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http,
+        Scheme = "Bearer"
+    });
+
+    c.OperationFilter<AuthenticationHeaderOperationFilter>();
 });
+
+
+builder.Services.AddOpenApiDocument(configure => { configure.Title = "ClamAv Api"; });
 
 // Register services
 builder.Services.AddSingleton<IClamAvInfoService, ClamAvInfoService>();
@@ -66,6 +97,10 @@ app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "ClamAV Scan API v1");
 });
+
+// Add authentication & authorization middleware
+app.UseAuthentication();
+app.UseAuthorization();
 
 // Map endpoints
 app.MapHealthEndpoints();
