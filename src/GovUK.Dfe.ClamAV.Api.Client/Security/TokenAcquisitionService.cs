@@ -26,7 +26,10 @@ namespace GovUK.Dfe.ClamAV.Api.Client.Security
                     if (string.IsNullOrWhiteSpace(_settings.ClientSecret))
                     {
                         _logger.LogInformation("Using Managed Identity for token acquisition");
-                        return new DefaultAzureCredential();
+                        return new DefaultAzureCredential(new DefaultAzureCredentialOptions
+                        {
+                            ManagedIdentityClientId = _settings.MiClientId
+                        });
                     }
 
                     _logger.LogInformation("Using Client Credentials (ClientId + Secret) for token acquisition");
