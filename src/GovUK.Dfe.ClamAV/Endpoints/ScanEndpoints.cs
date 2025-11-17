@@ -15,9 +15,10 @@ public static class ScanEndpoints
         scanGroup.MapPost("", async (IFormFile file, FileScanHandler handler) => 
             await handler.HandleSyncAsync(file))
             .Accepts<IFormFile>("multipart/form-data")
-            .Produces(200)
-            .Produces(400)
+            .Produces<ScanResponse>(200)
+            .Produces<ErrorResponse>(400)
             .Produces(500)
+            .RequireAuthorization("CanRead")
             .WithName("ScanSync")
             .WithDescription("Upload a file for synchronous virus scanning. Waits for scan to complete before returning.")
             .DisableAntiforgery();
@@ -26,8 +27,9 @@ public static class ScanEndpoints
         scanGroup.MapPost("/async", async (IFormFile file, FileScanHandler handler) => 
             await handler.HandleAsyncAsync(file))
             .Accepts<IFormFile>("multipart/form-data")
-            .Produces(202)
-            .Produces(400)
+            .Produces<AsyncScanResponse>(202)
+            .Produces<ErrorResponse>(400)
+            .RequireAuthorization("CanRead")
             .WithName("ScanAsync")
             .WithDescription("Upload a file for asynchronous virus scanning. Returns immediately with a job ID.")
             .DisableAntiforgery();
@@ -36,8 +38,11 @@ public static class ScanEndpoints
         scanGroup.MapPost("/async/url", async (ScanUrlRequest urlRequest, UrlScanHandler handler) => 
             await handler.HandleAsync(urlRequest))
             .Accepts<ScanUrlRequest>("application/json")
-            .Produces(202)
-            .Produces(400)
+            .Produces<AsyncScanResponse>(202)
+            .Produces<ErrorResponse>(400)
+            .Produces(401)
+            .Produces(403)
+            .RequireAuthorization("CanRead")
             .WithName("ScanAsyncUrl")
             .WithDescription("Download a file from a URL and scan it asynchronously. Returns immediately with job ID. Download and scan happen in background. Set 'isBase64' to true if the URL is Base64 encoded.");
 
@@ -46,47 +51,53 @@ public static class ScanEndpoints
         {
             var job = jobService.GetJob(jobId);
             if (job == null)
-                return Results.NotFound(new { error = "Job not found" });
+                return Results.NotFound(new ErrorResponse { Error = "Job not found" });
 
-            return Results.Ok(new
+            return Results.Ok(new ScanStatusResponse
             {
-                jobId = job.JobId,
-                status = job.Status,
-                fileName = job.FileName,
-                fileSize = job.FileSize,
-                engine = job.Engine,
-                malware = job.Malware,
-                error = job.Error,
-                createdAt = job.CreatedAt,
-                completedAt = job.CompletedAt,
-                scanDurationMs = job.ScanDuration?.TotalMilliseconds
+                JobId = job.JobId,
+                Status = job.Status,
+                FileName = job.FileName,
+                FileSize = job.FileSize,
+                Engine = job.Engine,
+                Malware = job.Malware,
+                Error = job.Error,
+                CreatedAt = job.CreatedAt,
+                CompletedAt = job.CompletedAt,
+                ScanDurationMs = job.ScanDuration?.TotalMilliseconds
             });
         })
-        .Produces(200)
-        .Produces(404)
+        .Produces<ScanStatusResponse>(200)
+        .Produces<ErrorResponse>(404)
+        .Produces(401)
+        .Produces(403)
+        .RequireAuthorization("CanRead")
         .WithName("GetScanStatus")
         .WithDescription("Get the status of an asynchronous scan job");
 
         // List all jobs
         scanGroup.MapGet("/jobs", (IScanJobService jobService) =>
         {
-            var jobs = jobService.GetAllJobs().Take(100); // Limit to 100 most recent
-            return Results.Ok(new
+            var jobs = jobService.GetAllJobs().Take(100).ToList(); // Limit to 100 most recent
+            return Results.Ok(new JobsListResponse
             {
-                jobs = jobs.Select(j => new
+                Jobs = jobs.Select(j => new JobSummary
                 {
-                    jobId = j.JobId,
-                    status = j.Status,
-                    fileName = j.FileName,
-                    fileSize = j.FileSize,
-                    createdAt = j.CreatedAt,
-                    completedAt = j.CompletedAt,
-                    scanDurationMs = j.ScanDuration?.TotalMilliseconds
+                    JobId = j.JobId,
+                    Status = j.Status,
+                    FileName = j.FileName,
+                    FileSize = j.FileSize,
+                    CreatedAt = j.CreatedAt,
+                    CompletedAt = j.CompletedAt,
+                    ScanDurationMs = j.ScanDuration?.TotalMilliseconds
                 }),
-                count = jobs.Count()
+                Count = jobs.Count
             });
         })
-        .Produces(200)
+        .Produces<JobsListResponse>(200)
+        .Produces(401)
+        .Produces(403)
+        .RequireAuthorization("CanRead")
         .WithName("ListJobs")
         .WithDescription("List recent scan jobs (for monitoring/debugging)");
     }

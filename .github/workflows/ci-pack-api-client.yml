@@ -1,0 +1,29 @@
+name: CI & Pack GovUK.Dfe.ClamAV.Api.Client
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - "src/GovUK.Dfe.ClamAV.Api.Client/**"
+  pull_request:
+    branches: [ main ]
+    paths:
+      - "src/GovUK.Dfe.ClamAV.Api.Client/**"
+
+jobs:
+  build-and-test:
+    uses: ./.github/workflows/build-test-template.yml
+    with:
+      project_name: GovUK.Dfe.ClamAV.Api.Client
+      project_path: src/GovUK.Dfe.ClamAV.Api.Client
+      run_tests: false
+
+  pack-and-release:
+    needs: build-and-test
+    if: needs.build-and-test.result == 'success'
+    uses: ./.github/workflows/pack-template.yml
+    with:
+      project_name: GovUK.Dfe.ClamAV.Api.Client
+      project_path: src/GovUK.Dfe.ClamAV.Api.Client/GovUK.Dfe.ClamAV.Api.Client.csproj
+    secrets:
+      NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
