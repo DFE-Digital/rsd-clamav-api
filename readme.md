@@ -25,85 +25,124 @@ It’s designed for local development, testing, and service integration — all 
 ## 🏗️ Architecture Diagram
 
 ```mermaid
-graph TB
-    subgraph "Client Layer"
-        Client[Client/User]
+
+flowchart TB
+
+    %% ─────────────────────────────
+    %% Client Layer
+    %% ─────────────────────────────
+    subgraph CLIENT["Client Layer"]
+        Client["Client / Service"]
     end
 
-    subgraph "API Endpoints"
+    %% ─────────────────────────────
+    %% API Endpoints
+    %% ─────────────────────────────
+    subgraph ENDPOINTS["API Endpoints"]
         HealthEP["/healthz<br/>/version"]
-        SyncEP["/scan<br/>(Synchronous)"]
-        AsyncEP["/scan/async<br/>(File Upload)"]
-        UrlEP["/scan/async/url<br/>(URL Download)"]
-        StatusEP["/scan/async/{jobId}<br/>(Check Status)"]
-        JobsEP["/scan/jobs<br/>(List Jobs)"]
+        SyncEP["/scan<br/>(sync)"]
+        AsyncEP["/scan/async<br/>(file upload)"]
+        UrlEP["/scan/async/url<br/>(URL scan)"]
+        StatusEP["/scan/async/{jobId}<br/>(status)"]
+        JobsEP["/scan/jobs<br/>(list jobs)"]
     end
 
-    subgraph "Handlers"
-        FileScanHandler["FileScanHandler<br/>- HandleSyncAsync()<br/>- HandleAsyncAsync()"]
-        UrlScanHandler["UrlScanHandler<br/>- HandleAsync()<br/>- Base64 Decode"]
+    %% ─────────────────────────────
+    %% Handlers
+    %% ─────────────────────────────
+    subgraph HANDLERS["Handlers"]
+        FileScanHandler["FileScanHandler"]
+        UrlScanHandler["UrlScanHandler"]
     end
 
-    subgraph "Services"
-        JobService["ScanJobService<br/>- CreateJob()<br/>- UpdateJobStatus()<br/>- GetJob()"]
-        ClamService["ClamAvInfoService<br/>- GetVersionAsync()"]
+    %% ─────────────────────────────
+    %% Services
+    %% ─────────────────────────────
+    subgraph SERVICES["Core Services"]
+        JobService["ScanJobService"]
+        InfoService["ClamAvInfoService"]
     end
 
-    subgraph "Background Processing"
-        Channel["Bounded Channel<br/>(Queue: 100 jobs)"]
-        BGService["BackgroundScanService<br/>- ProcessScanRequest()<br/>- DownloadFileAsync()"]
+    %% ─────────────────────────────
+    %% Background Processing
+    %% ─────────────────────────────
+    subgraph BACKGROUND["Background Processing"]
+        Channel["Bounded Channel<br/>(queue)"]
+        BGService["BackgroundScanService"]
     end
 
-    subgraph "Storage"
-        TempFiles["Temp File Storage<br/>/tmp/clamav_*"]
-        JobMemory["In-Memory Job Store<br/>(ConcurrentDictionary)"]
+    %% ─────────────────────────────
+    %% Storage
+    %% ─────────────────────────────
+    subgraph STORAGE["Storage"]
+        TempFiles["Temp Files (/tmp)"]
+        JobMemory["Job Store (Memory)"]
     end
 
-    subgraph "ClamAV Engine"
-        ClamD["ClamAV Daemon<br/>(clamd)"]
-        VirusDB["Virus Database<br/>(Updated via freshclam)"]
+    %% ─────────────────────────────
+    %% ClamAV Layer
+    %% ─────────────────────────────
+    subgraph CLAMAV["ClamAV Engine"]
+        ClamD["clamd (Scanner)"]
+        VirusDB["Virus DB (freshclam)"]
     end
 
-    Client -->|GET| HealthEP
-    Client -->|POST multipart| SyncEP
-    Client -->|POST multipart| AsyncEP
-    Client -->|POST JSON| UrlEP
-    Client -->|GET| StatusEP
-    Client -->|GET| JobsEP
 
-    HealthEP --> ClamService
+    %% ─────────────────────────────
+    %% Client to Endpoints
+    %% ─────────────────────────────
+    Client --> HealthEP
+    Client --> SyncEP
+    Client --> AsyncEP
+    Client --> UrlEP
+    Client --> StatusEP
+    Client --> JobsEP
+
+    %% ─────────────────────────────
+    %% Endpoint Routing
+    %% ─────────────────────────────
+    HealthEP --> InfoService
     SyncEP --> FileScanHandler
     AsyncEP --> FileScanHandler
     UrlEP --> UrlScanHandler
 
-    FileScanHandler -->|Sync: Direct scan| ClamD
-    FileScanHandler -->|Async: Save & Queue| TempFiles
-    FileScanHandler -->|Create job| JobService
-    UrlScanHandler -->|Create job + Queue| Channel
-
-    TempFiles -->|Enqueue| Channel
-    Channel -->|Process| BGService
-
-    BGService -->|Download from URL| TempFiles
-    BGService -->|Update status:<br/>downloading→scanning| JobService
-    BGService -->|Scan file| ClamD
-    BGService -->|Update status:<br/>clean/infected/error| JobService
-    BGService -->|Cleanup| TempFiles
-
     StatusEP --> JobService
     JobsEP --> JobService
+
+    %% ─────────────────────────────
+    %% Handler Logic
+    %% ─────────────────────────────
+    FileScanHandler -->|sync scan| ClamD
+    FileScanHandler -->|async save| TempFiles
+    FileScanHandler -->|create job| JobService
+
+    UrlScanHandler -->|create job| JobService
+    UrlScanHandler -->|queue job| Channel
+
+    TempFiles -->|enqueue| Channel
+
+    %% ─────────────────────────────
+    %% Background Worker
+    %% ─────────────────────────────
+    Channel --> BGService
+    BGService -->|download file| TempFiles
+    BGService -->|update status| JobService
+    BGService -->|scan file| ClamD
+    BGService -->|update result| JobService
+    BGService -->|cleanup| TempFiles
+
+    %% ─────────────────────────────
+    %% Job Store
+    %% ─────────────────────────────
     JobService --> JobMemory
 
+    %% ─────────────────────────────
+    %% Virus DB
+    %% ─────────────────────────────
     ClamD --> VirusDB
 
-    style Client fill:#e1f5ff
-    style SyncEP fill:#fff3cd
-    style AsyncEP fill:#d4edda
-    style UrlEP fill:#d4edda
-    style StatusEP fill:#cce5ff
-    style BGService fill:#f8d7da
-    style ClamD fill:#d6d8db
-    style Channel fill:#ffeaa7
+
+
 ```
 
 ### Flow Descriptions
