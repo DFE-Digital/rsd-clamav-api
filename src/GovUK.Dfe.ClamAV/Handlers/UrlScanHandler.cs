@@ -28,7 +28,7 @@ public class UrlScanHandler
     public async Task<IResult> HandleAsync(ScanUrlRequest urlRequest)
     {
         if (string.IsNullOrWhiteSpace(urlRequest.Url))
-            return Results.BadRequest(new { error = "URL is required" });
+            return Results.BadRequest(new ErrorResponse { Error = "URL is required" });
 
         var fileUrl = urlRequest.Url;
 
@@ -42,14 +42,14 @@ public class UrlScanHandler
             }
             catch (FormatException)
             {
-                return Results.BadRequest(new { error = "Invalid Base64 encoded URL" });
+                return Results.BadRequest(new ErrorResponse { Error = "Invalid Base64 encoded URL" });
             }
         }
 
         if (!Uri.TryCreate(fileUrl, UriKind.Absolute, out var uri) ||
             (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
         {
-            return Results.BadRequest(new { error = "Invalid URL. Must be a valid HTTP or HTTPS URL." });
+            return Results.BadRequest(new ErrorResponse { Error = "Invalid URL. Must be a valid HTTP or HTTPS URL." });
         }
 
         // Extract original filename from URL
@@ -73,14 +73,14 @@ public class UrlScanHandler
             return await _scanProcessing.ProcessUrlScanAsync(jobId, fileUrl, tempPath, maxFileSizeBytes, ct);
         });
 
-        return Results.Accepted($"/scan/async/{jobId}", new
+        return Results.Accepted($"/scan/async/{jobId}", new AsyncScanResponse
         {
-            jobId,
-            status = "downloading",
-            fileName,
-            message = "Download started. Use the jobId to check status.",
-            statusUrl = $"/scan/async/{jobId}",
-            sourceUrl = fileUrl
+            JobId = jobId,
+            Status = "downloading",
+            FileName = fileName,
+            Message = "Download started. Use the jobId to check status.",
+            StatusUrl = $"/scan/async/{jobId}",
+            SourceUrl = fileUrl
         });
     }
 }
