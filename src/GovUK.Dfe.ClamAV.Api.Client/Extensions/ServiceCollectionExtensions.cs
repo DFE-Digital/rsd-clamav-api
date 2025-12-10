@@ -2,6 +2,7 @@
 using GovUK.Dfe.ClamAV.Api.Client.Settings;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System.Diagnostics.CodeAnalysis;
 
 namespace GovUK.Dfe.ClamAV.Api.Client.Extensions
@@ -43,7 +44,8 @@ namespace GovUK.Dfe.ClamAV.Api.Client.Extensions
                     .AddHttpMessageHandler(serviceProvider =>
                     {
                         var tokenService = serviceProvider.GetRequiredService<ITokenAcquisitionService>();
-                        return new BearerTokenHandler(tokenService);
+                        var logger = serviceProvider.GetRequiredService<ILogger<BearerTokenHandler>>();
+                        return new BearerTokenHandler(tokenService, logger);
                     });
             }
             return services;
