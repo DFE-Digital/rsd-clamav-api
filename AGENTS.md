@@ -7,7 +7,7 @@ Human doc: [`readme.md`](readme.md) (note: it may still mention `BackgroundScanS
 ## Constraints
 
 1. Do not add FlexForms/TenantConfig knowledge here. This is a generic scanner.
-2. Async jobs live in an **in-memory** `ConcurrentDictionary`. Multi-replica ACA **will not** share job state. Prefer single replica or don’t poll a different instance.
+2. Async job state lives in **Redis** when `ConnectionStrings:Redis` is set (`RedisScanJobService`), otherwise in an **in-memory** `ConcurrentDictionary` that replicas do not share. Never run more than one replica without Redis. The scan work itself is always in-process on the accepting replica.
 3. `/healthz` is anonymous; scan endpoints require JWT role `API.Read` (`CanRead`).
 4. Large files: use async URL/file, not sync `POST /scan` (loads stream via NClam).
 5. NSwag client regenerates when `CI != true`. docker-compose sets `CI: true` (skips regen).

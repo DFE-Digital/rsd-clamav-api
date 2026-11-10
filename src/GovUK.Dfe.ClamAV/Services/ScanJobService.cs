@@ -5,19 +5,24 @@ namespace GovUK.Dfe.ClamAV.Services;
 
 public interface IScanJobService
 {
-    string CreateJob(string fileName, long fileSize);
-    ScanJob? GetJob(string jobId);
-    void UpdateJobStatus(string jobId, string status, string? malware = null, string? error = null);
-    void CompleteJob(string jobId);
-    void CleanupOldJobs(TimeSpan maxAge);
-    IEnumerable<ScanJob> GetAllJobs();
+    Task<string> CreateJobAsync(string fileName, long fileSize, string status = "queued");
+    Task<ScanJob?> GetJobAsync(string jobId);
+    Task UpdateJobStatusAsync(string jobId, string status, string? malware = null, string? error = null);
+    Task UpdateFileSizeAsync(string jobId, long fileSize);
+    Task CompleteJobAsync(string jobId);
+    Task CleanupOldJobsAsync(TimeSpan maxAge);
+    Task<IReadOnlyList<ScanJob>> GetRecentJobsAsync(int count);
 }
 
+/// <summary>
+/// Keeps scan jobs in this process only. A status request that reaches another replica gets 404, so use
+/// <see cref="RedisScanJobService"/> (set <c>ConnectionStrings:Redis</c>) whenever more than one replica can run.
+/// </summary>
 public class ScanJobService(ILogger<ScanJobService> logger) : IScanJobService
 {
     private readonly ConcurrentDictionary<string, ScanJob> _jobs = new();
 
-    public string CreateJob(string fileName, long fileSize)
+    public Task<string> CreateJobAsync(string fileName, long fileSize, string status = "queued")
     {
         var jobId = Guid.NewGuid().ToString();
         var job = new ScanJob
@@ -25,7 +30,7 @@ public class ScanJobService(ILogger<ScanJobService> logger) : IScanJobService
             JobId = jobId,
             FileName = fileName,
             FileSize = fileSize,
-            Status = "queued",
+            Status = status,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -33,16 +38,16 @@ public class ScanJobService(ILogger<ScanJobService> logger) : IScanJobService
         logger.LogInformation("Created scan job {JobId} for file {FileName} ({FileSize} bytes)", 
             jobId, fileName, fileSize);
         
-        return jobId;
+        return Task.FromResult(jobId);
     }
 
-    public ScanJob? GetJob(string jobId)
+    public Task<ScanJob?> GetJobAsync(string jobId)
     {
         _jobs.TryGetValue(jobId, out var job);
-        return job;
+        return Task.FromResult(job);
     }
 
-    public void UpdateJobStatus(string jobId, string status, string? malware = null, string? error = null)
+    public Task UpdateJobStatusAsync(string jobId, string status, string? malware = null, string? error = null)
     {
         if (_jobs.TryGetValue(jobId, out var job))
         {
@@ -52,9 +57,21 @@ public class ScanJobService(ILogger<ScanJobService> logger) : IScanJobService
             
             logger.LogInformation("Updated scan job {JobId} to status {Status}", jobId, status);
         }
+
+        return Task.CompletedTask;
     }
 
-    public void CompleteJob(string jobId)
+    public Task UpdateFileSizeAsync(string jobId, long fileSize)
+    {
+        if (_jobs.TryGetValue(jobId, out var job))
+        {
+            job.FileSize = fileSize;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public Task CompleteJobAsync(string jobId)
     {
         if (_jobs.TryGetValue(jobId, out var job))
         {
@@ -62,9 +79,11 @@ public class ScanJobService(ILogger<ScanJobService> logger) : IScanJobService
             logger.LogInformation("Completed scan job {JobId} in {Duration}ms", 
                 jobId, job.ScanDuration?.TotalMilliseconds ?? 0);
         }
+
+        return Task.CompletedTask;
     }
 
-    public void CleanupOldJobs(TimeSpan maxAge)
+    public Task CleanupOldJobsAsync(TimeSpan maxAge)
     {
         var cutoff = DateTime.UtcNow - maxAge;
         var oldJobs = _jobs.Where(kvp => kvp.Value.CreatedAt < cutoff).Select(kvp => kvp.Key).ToList();
@@ -81,11 +100,13 @@ public class ScanJobService(ILogger<ScanJobService> logger) : IScanJobService
         {
             logger.LogInformation("Cleaned up {Count} old scan jobs", oldJobs.Count);
         }
+
+        return Task.CompletedTask;
     }
 
-    public IEnumerable<ScanJob> GetAllJobs()
+    public Task<IReadOnlyList<ScanJob>> GetRecentJobsAsync(int count)
     {
-        return _jobs.Values.OrderByDescending(j => j.CreatedAt);
+        IReadOnlyList<ScanJob> jobs = _jobs.Values.OrderByDescending(j => j.CreatedAt).Take(count).ToList();
+        return Task.FromResult(jobs);
     }
 }
-

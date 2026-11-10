@@ -61,8 +61,7 @@ public class UrlScanHandler
         }
 
         // Create job immediately with "downloading" status
-        var jobId = _jobService.CreateJob(fileName, 0);
-        _jobService.UpdateJobStatus(jobId, "downloading");
+        var jobId = await _jobService.CreateJobAsync(fileName, 0, "downloading");
 
         var tempPath = Path.Combine(Path.GetTempPath(), $"clamav_{jobId}_{Guid.NewGuid():N}_{fileName}");
         var maxFileSizeBytes = (long)_maxFileSizeMb * 1024 * 1024;
