@@ -27,19 +27,19 @@ public class JobCleanupService(
 
     private void ScheduleCleanup()
     {
-        _ = backgroundService.EnqueueTask((ct) =>
+        _ = backgroundService.EnqueueTask(async (ct) =>
         {
             try
             {
                 logger.LogInformation("Starting scheduled job cleanup");
-                jobService.CleanupOldJobs(TimeSpan.FromHours(24)); // Keep jobs for 24 hours
+                await jobService.CleanupOldJobsAsync(TimeSpan.FromHours(24)); // Keep jobs for 24 hours
                 logger.LogInformation("Scheduled job cleanup completed");
-                return Task.FromResult(true);
+                return true;
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Error during scheduled job cleanup");
-                return Task.FromResult(false);
+                return false;
             }
         });
     }

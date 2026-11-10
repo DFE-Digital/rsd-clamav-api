@@ -47,9 +47,9 @@ public static class ScanEndpoints
             .WithDescription("Download a file from a URL and scan it asynchronously. Returns immediately with job ID. Download and scan happen in background. Set 'isBase64' to true if the URL is Base64 encoded.");
 
         // Check scan status
-        scanGroup.MapGet("/async/{jobId}", (string jobId, IScanJobService jobService) =>
+        scanGroup.MapGet("/async/{jobId}", async (string jobId, IScanJobService jobService) =>
         {
-            var job = jobService.GetJob(jobId);
+            var job = await jobService.GetJobAsync(jobId);
             if (job == null)
                 return Results.NotFound(new ErrorResponse { Error = "Job not found" });
 
@@ -76,9 +76,9 @@ public static class ScanEndpoints
         .WithDescription("Get the status of an asynchronous scan job");
 
         // List all jobs
-        scanGroup.MapGet("/jobs", (IScanJobService jobService) =>
+        scanGroup.MapGet("/jobs", async (IScanJobService jobService) =>
         {
-            var jobs = jobService.GetAllJobs().Take(100).ToList(); // Limit to 100 most recent
+            var jobs = await jobService.GetRecentJobsAsync(100);
             return Results.Ok(new JobsListResponse
             {
                 Jobs = jobs.Select(j => new JobSummary

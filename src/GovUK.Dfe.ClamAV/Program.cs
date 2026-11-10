@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Identity.Web;
 using Microsoft.OpenApi.Models;
+using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -72,7 +73,21 @@ builder.Services.AddOpenApiDocument(configure => { configure.Title = "ClamAv Api
 
 // Register services
 builder.Services.AddSingleton<IClamAvInfoService, ClamAvInfoService>();
-builder.Services.AddSingleton<IScanJobService, ScanJobService>();
+// Redis lets any replica answer a status poll and keeps jobs across restarts. Without it, jobs live in
+// this process only and the API must run as a single replica.
+var redisConnectionString = builder.Configuration.GetConnectionString("Redis");
+var useRedisJobStore = !string.IsNullOrWhiteSpace(redisConnectionString);
+if (useRedisJobStore)
+{
+    var redisOptions = ConfigurationOptions.Parse(redisConnectionString!);
+    redisOptions.AbortOnConnectFail = false;
+    builder.Services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer.Connect(redisOptions));
+    builder.Services.AddSingleton<IScanJobService, RedisScanJobService>();
+}
+else
+{
+    builder.Services.AddSingleton<IScanJobService, ScanJobService>();
+}
 
 // Register processing service
 builder.Services.AddScoped<IScanProcessingService, ScanProcessingService>();
@@ -91,6 +106,13 @@ builder.Services.AddBackgroundServiceWithParallelism(
 builder.Services.AddHostedService<JobCleanupService>();
 
 var app = builder.Build();
+
+if (!useRedisJobStore)
+{
+    app.Logger.LogWarning(
+        "ConnectionStrings:Redis is not set: scan jobs are kept in memory. Run a single replica, " +
+        "or a status poll that reaches another replica returns 404");
+}
 
 app.UseSwagger();
 app.UseSwaggerUI(c =>

@@ -13,32 +13,31 @@ public class ScanProcessingService(
     {
         try
         {
-            jobService.UpdateJobStatus(jobId, "scanning");
+            await jobService.UpdateJobStatusAsync(jobId, "scanning");
             logger.LogInformation("Started scanning job {JobId}", jobId);
 
             var scanResult = await ScanFileAsync(tempFilePath, cancellationToken);
 
             if (scanResult.IsSuccess)
             {
-                jobService.UpdateJobStatus(jobId, scanResult.IsClean ? "clean" : "infected", 
+                await jobService.UpdateJobStatusAsync(jobId, scanResult.IsClean ? "clean" : "infected", 
                     malware: scanResult.MalwareName);
                 logger.LogInformation("Job {JobId} scan complete: {Status}", jobId, 
                     scanResult.IsClean ? "Clean" : $"Infected with {scanResult.MalwareName}");
             }
             else
             {
-                jobService.UpdateJobStatus(jobId, "error", error: scanResult.Error);
+                await jobService.UpdateJobStatusAsync(jobId, "error", error: scanResult.Error);
                 logger.LogError("Job {JobId} scan error: {Error}", jobId, scanResult.Error);
             }
 
-            jobService.CompleteJob(jobId);
+            await jobService.CompleteJobAsync(jobId);
             return scanResult.IsSuccess;
         }
         catch (Exception ex)
         {
-            jobService.UpdateJobStatus(jobId, "error", error: ex.Message);
             logger.LogError(ex, "Error processing scan job {JobId}", jobId);
-            jobService.CompleteJob(jobId);
+            await TryMarkFailedAsync(jobId, ex.Message);
             return false;
         }
         finally
@@ -53,7 +52,7 @@ public class ScanProcessingService(
         try
         {
             // Download phase
-            jobService.UpdateJobStatus(jobId, "downloading");
+            await jobService.UpdateJobStatusAsync(jobId, "downloading");
             logger.LogInformation("Started downloading file from {Url} for job {JobId}", url, jobId);
 
             var downloadSuccess = await DownloadFileAsync(jobId, url, tempFilePath, maxFileSize, cancellationToken);
@@ -69,11 +68,31 @@ public class ScanProcessingService(
         }
         catch (Exception ex)
         {
-            jobService.UpdateJobStatus(jobId, "error", error: ex.Message);
             logger.LogError(ex, "Error processing URL scan job {JobId}", jobId);
-            jobService.CompleteJob(jobId);
-            CleanupTempFile(tempFilePath, jobId);
+            await TryMarkFailedAsync(jobId, ex.Message);
             return false;
+        }
+        finally
+        {
+            // Runs even if recording the failure throws, so a downloaded file never stays on disk.
+            CleanupTempFile(tempFilePath, jobId);
+        }
+    }
+
+    /// <summary>
+    /// Records a failed job. Never throws: the job store may be the thing that failed, and callers must still
+    /// clean up.
+    /// </summary>
+    private async Task TryMarkFailedAsync(string jobId, string error)
+    {
+        try
+        {
+            await jobService.UpdateJobStatusAsync(jobId, "error", error: error);
+            await jobService.CompleteJobAsync(jobId);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Could not record failure for scan job {JobId}", jobId);
         }
     }
 
@@ -97,19 +116,14 @@ public class ScanProcessingService(
 
                 if (contentLength.Value > maxFileSize)
                 {
-                    jobService.UpdateJobStatus(jobId, "error",
+                    await jobService.UpdateJobStatusAsync(jobId, "error",
                         error: $"File size ({contentLength.Value:N0} bytes) exceeds maximum allowed size ({maxFileSize:N0} bytes)");
-                    jobService.CompleteJob(jobId);
+                    await jobService.CompleteJobAsync(jobId);
                     logger.LogWarning("Job {JobId} cancelled: File too large ({Size} bytes)", jobId, contentLength.Value);
                     return false;
                 }
 
-                // Update job with actual file size
-                var job = jobService.GetJob(jobId);
-                if (job != null)
-                {
-                    job.FileSize = contentLength.Value;
-                }
+                await jobService.UpdateFileSizeAsync(jobId, contentLength.Value);
             }
             else
             {
@@ -148,9 +162,9 @@ public class ScanProcessingService(
                         logger.LogWarning(deleteEx, "Failed to delete temp file {Path}", tempFilePath);
                     }
 
-                    jobService.UpdateJobStatus(jobId, "error",
+                    await jobService.UpdateJobStatusAsync(jobId, "error",
                         error: $"File size exceeds maximum allowed size ({maxFileSize:N0} bytes). Download cancelled.");
-                    jobService.CompleteJob(jobId);
+                    await jobService.CompleteJobAsync(jobId);
                     logger.LogWarning("Job {JobId} cancelled: File exceeded size limit during download", jobId);
                     return false;
                 }
@@ -163,11 +177,7 @@ public class ScanProcessingService(
             // Update job with actual file size if we didn't have Content-Length
             if (!contentLength.HasValue)
             {
-                var job = jobService.GetJob(jobId);
-                if (job != null)
-                {
-                    job.FileSize = totalBytesRead;
-                }
+                await jobService.UpdateFileSizeAsync(jobId, totalBytesRead);
             }
 
             return true;
@@ -175,8 +185,7 @@ public class ScanProcessingService(
         catch (Exception ex)
         {
             logger.LogError(ex, "Error downloading file from {Url} for job {JobId}", url, jobId);
-            jobService.UpdateJobStatus(jobId, "error", error: $"Failed to download file: {ex.Message}");
-            jobService.CompleteJob(jobId);
+            await TryMarkFailedAsync(jobId, $"Failed to download file: {ex.Message}");
 
             // Clean up temp file on error
             CleanupTempFile(tempFilePath, jobId);

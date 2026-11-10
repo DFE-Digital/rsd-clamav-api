@@ -56,7 +56,7 @@ public class FileScanHandler(
             return Results.BadRequest(new ErrorResponse { Error = "Missing or empty file" });
 
         // Create job first
-        var jobId = jobService.CreateJob(file.FileName, file.Length);
+        var jobId = await jobService.CreateJobAsync(file.FileName, file.Length);
 
         // Save to temp file
         var tempPath = Path.Combine(Path.GetTempPath(), $"clamav_{jobId}_{Path.GetFileName(file.FileName)}");
@@ -68,7 +68,7 @@ public class FileScanHandler(
         }
         catch (Exception ex)
         {
-            jobService.UpdateJobStatus(jobId, "error", error: $"Failed to save file: {ex.Message}");
+            await jobService.UpdateJobStatusAsync(jobId, "error", error: $"Failed to save file: {ex.Message}");
             return Results.Problem("Failed to process upload", statusCode: 500);
         }
 
