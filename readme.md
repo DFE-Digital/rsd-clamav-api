@@ -358,7 +358,7 @@ Environment variables can be overridden in `docker-compose.yml`:
 | `CLAMD_PORT` | `3310` | ClamAV daemon port |
 | `MAX_FILE_SIZE_MB` | `200` | Max upload size |
 | `ConnectionStrings__Redis` | - | Redis for async scan jobs. **Required when running more than one replica**; without it jobs are kept in memory and a status poll that reaches another replica gets 404 |
-| `ScanJobs__RedisKeyPrefix` | `clamav:jobs:` | Key prefix for job records in Redis (set per environment if several share one Redis) |
+| `ScanJobs__RedisKeyPrefix` | Set per environment in `appsettings.{Environment}.json`: `ClamAV:{Local\|Development\|Test\|Production}:Jobs:` | Key prefix for job records in Redis, so environments sharing one Redis never see each other's jobs. Override only if you need something different |
 | `ASPNETCORE_ENVIRONMENT` | `Production` | .NET environment name |
 | `AzureAd__TenantId` | - | Azure AD Tenant ID |
 | `AzureAd__ClientId` | - | Azure AD Application (client) ID |
