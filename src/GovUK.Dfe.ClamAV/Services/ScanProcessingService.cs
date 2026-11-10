@@ -36,9 +36,8 @@ public class ScanProcessingService(
         }
         catch (Exception ex)
         {
-            await jobService.UpdateJobStatusAsync(jobId, "error", error: ex.Message);
             logger.LogError(ex, "Error processing scan job {JobId}", jobId);
-            await jobService.CompleteJobAsync(jobId);
+            await TryMarkFailedAsync(jobId, ex.Message);
             return false;
         }
         finally
@@ -69,11 +68,31 @@ public class ScanProcessingService(
         }
         catch (Exception ex)
         {
-            await jobService.UpdateJobStatusAsync(jobId, "error", error: ex.Message);
             logger.LogError(ex, "Error processing URL scan job {JobId}", jobId);
-            await jobService.CompleteJobAsync(jobId);
-            CleanupTempFile(tempFilePath, jobId);
+            await TryMarkFailedAsync(jobId, ex.Message);
             return false;
+        }
+        finally
+        {
+            // Runs even if recording the failure throws, so a downloaded file never stays on disk.
+            CleanupTempFile(tempFilePath, jobId);
+        }
+    }
+
+    /// <summary>
+    /// Records a failed job. Never throws: the job store may be the thing that failed, and callers must still
+    /// clean up.
+    /// </summary>
+    private async Task TryMarkFailedAsync(string jobId, string error)
+    {
+        try
+        {
+            await jobService.UpdateJobStatusAsync(jobId, "error", error: error);
+            await jobService.CompleteJobAsync(jobId);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Could not record failure for scan job {JobId}", jobId);
         }
     }
 
@@ -166,8 +185,7 @@ public class ScanProcessingService(
         catch (Exception ex)
         {
             logger.LogError(ex, "Error downloading file from {Url} for job {JobId}", url, jobId);
-            await jobService.UpdateJobStatusAsync(jobId, "error", error: $"Failed to download file: {ex.Message}");
-            await jobService.CompleteJobAsync(jobId);
+            await TryMarkFailedAsync(jobId, $"Failed to download file: {ex.Message}");
 
             // Clean up temp file on error
             CleanupTempFile(tempFilePath, jobId);

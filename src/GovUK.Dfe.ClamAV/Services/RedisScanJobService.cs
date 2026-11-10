@@ -90,7 +90,8 @@ public sealed class RedisScanJobService(
             return [];
         }
 
-        var values = await Database.StringGetAsync(jobIds.Select(id => JobKey(id.ToString())).ToArray());
+        // One GET per job rather than MGET: job keys hash to different slots on Redis Cluster.
+        var values = await Task.WhenAll(jobIds.Select(id => Database.StringGetAsync(JobKey(id.ToString()))));
         return values
             .Where(value => !value.IsNullOrEmpty)
             .Select(value => JsonSerializer.Deserialize<ScanJob>(value.ToString())!)
@@ -106,7 +107,8 @@ public sealed class RedisScanJobService(
         }
 
         update(job);
-        await Database.StringSetAsync(JobKey(jobId), Serialize(job), expiry: null, keepTtl: true);
+        // When.Exists: if the job expired since it was read, do not recreate it without an expiry.
+        await Database.StringSetAsync(JobKey(jobId), Serialize(job), expiry: null, keepTtl: true, when: When.Exists);
     }
 
     private RedisKey JobKey(string jobId) => $"{_prefix}{jobId}";
