@@ -12,8 +12,9 @@ on:
         type: string
         description: "Relative path to the project .csproj"
     secrets:
-      NUGET_API_KEY:
+      NUGET_USER:
         required: true
+        description: "nuget.org profile name (not email) that owns the Trusted Publishing policy"
 
 jobs:
   pack:
@@ -21,6 +22,7 @@ jobs:
     permissions:
       contents: write
       packages: write
+      id-token: write
 
     steps:
       - name: Checkout code
@@ -31,12 +33,12 @@ jobs:
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '10.0.x'
 
-      - name: Install GitVersion (v5)
-        uses: gittools/actions/gitversion/setup@v0.9
+      - name: Install GitVersion
+        uses: gittools/actions/gitversion/setup@v4.5.0
         with:
-          versionSpec: '5.x'
+          versionSpec: '6.7.x'
 
       - name: Add .NET global tools to PATH
         run: echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
@@ -58,22 +60,13 @@ jobs:
             /showvariable PreReleaseNumber)
 
           if [ -n "$LABEL" ]; then
-            VERSION="${BASE}-${LABEL}-${NUM}"
+            VERSION="${BASE}-${LABEL}${NUM}"
           else
             VERSION="$BASE"
           fi
 
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "Determined version: $VERSION"
-
-      - name: Verify API Key
-        run: |
-          if [ -z "${{ secrets.NUGET_API_KEY }}" ]; then
-            echo "❌ NUGET_API_KEY secret is not available"
-            exit 1
-          else
-            echo "✅ NUGET_API_KEY secret is available"
-          fi
 
       - name: Build and pack
         run: |
@@ -84,10 +77,17 @@ jobs:
             --no-build \
             --output ./artifacts
 
+      # The temporary API key is only valid for 1 hour, so request it right before pushing.
+      - name: NuGet login (OIDC Trusted Publishing)
+        uses: NuGet/login@v1
+        id: nuget_login
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
       - name: Push to NuGet.org
         run: |
           dotnet nuget push ./artifacts/*.nupkg \
-            --api-key "${{ secrets.NUGET_API_KEY }}" \
+            --api-key "${{ steps.nuget_login.outputs.NUGET_API_KEY }}" \
             --source "https://api.nuget.org/v3/index.json" \
             --skip-duplicate
 
@@ -117,4 +117,4 @@ jobs:
             --title "Release ${{ env.VERSION }} for ${{ inputs.project_name }}" \
             --notes "${{ env.RELEASE_NOTES }}" \
             --draft=false \
-            --prerelease=${{ github.event_name == 'pull_request' }} 
+            --prerelease=${{ github.event_name == 'pull_request' }}

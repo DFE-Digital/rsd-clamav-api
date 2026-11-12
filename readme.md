@@ -1,6 +1,6 @@
 ﻿# 🛡️ GovUK DfE ClamAV API Container
 
-A self-contained Dockerised antivirus scanning service built on **ClamAV** with a lightweight **.NET 8 HTTP API** and **Swagger UI**.
+A self-contained Dockerised antivirus scanning service built on **ClamAV** with a lightweight **.NET 10 HTTP API** and **Swagger UI**.
 
 This container runs the ClamAV engine and exposes a simple REST API for uploading and scanning files.  
 It’s designed for local development, testing, and service integration — all without needing to install ClamAV manually.
@@ -183,7 +183,7 @@ flowchart TB
 │   ├── clamd.conf                      # ClamAV daemon configuration
 │   └── freshclam.conf                  # Freshclam configuration
 └── src/
-    └── GovUK.Dfe.ClamAV/               # .NET 8 API project
+    └── GovUK.Dfe.ClamAV/               # .NET 10 API project
         ├── Program.cs                  # Application entry point & DI configuration
         ├── Endpoints/                  # Endpoint route definitions
         │   ├── HealthEndpoints.cs      # Health check & version endpoints

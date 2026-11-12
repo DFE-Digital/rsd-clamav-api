@@ -6,7 +6,7 @@ using GovUK.Dfe.CoreLibs.Security.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Identity.Web;
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);

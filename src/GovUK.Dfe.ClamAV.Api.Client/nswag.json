@@ -1,5 +1,5 @@
 {
-  "runtime": "Net80",
+  "runtime": "Net100",
   "defaultVariables": "CSharpOutputPath=../GovUK.Dfe.ClamAV.Api.Client",
   "documentGenerator": {
     "aspNetCoreToOpenApi": {
@@ -7,7 +7,7 @@
       "msBuildProjectExtensionsPath": null,
       "configuration": "Debug",
       "runtime": "",
-      "targetFramework": "net8.0",
+      "targetFramework": "net10.0",
       "noBuild": true,
       "verbose": true,
       "workingDirectory": "../GovUK.Dfe.ClamAV",
