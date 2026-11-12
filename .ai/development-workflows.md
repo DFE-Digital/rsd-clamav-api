@@ -6,6 +6,8 @@ No tests. Deploy workflow on `main`. GitVersion ContinuousDelivery.
 
 CODEOWNERS: `.github/CODEOWNERS`.
 
+Client pack (`ci-pack-api-client.yml`): the repo's default `GITHUB_TOKEN` is read-only, and a reusable workflow cannot raise permissions above its caller. The `pack-and-release` job therefore grants `contents: write` (tag + GitHub release) and `packages: write` itself; drop either and GitHub rejects the whole workflow file as invalid.
+
 ## Runtime and image (**Verified**)
 
 - API and client target `net10.0`; CI templates (`build-test-template.yml`, `pack-template.yml`) install the `10.0.x` SDK.
