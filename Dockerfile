@@ -1,7 +1,7 @@
 # =========================
 # Build stage: restore & publish .NET API
 # =========================
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 ARG CI
 ENV CI=${CI}
@@ -17,7 +17,7 @@ RUN dotnet publish GovUK.Dfe.ClamAV/GovUK.Dfe.ClamAV.csproj -c Release -p:CI=tru
 # =========================
 # Final stage: ASP.NET runtime + ClamAV
 # =========================
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 ENV ASPNETCORE_URLS=http://0.0.0.0:8080 \
 CLAMD_HOST=127.0.0.1 \
 CLAMD_PORT=3310 \

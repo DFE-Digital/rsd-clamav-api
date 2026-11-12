@@ -17,7 +17,7 @@ on:
         default: true
         description: "Flag to run or skip tests"
 env:
-  DOTNET_VERSION: '8.0.x'
+  DOTNET_VERSION: '10.0.x'
   EF_VERSION: '6.0.5'
   JAVA_VERSION: '17'
 

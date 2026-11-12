@@ -1,4 +1,4 @@
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
 namespace GovUK.Dfe.ClamAV.Swagger
@@ -9,25 +9,10 @@ namespace GovUK.Dfe.ClamAV.Swagger
         {
             operation.Security ??= new List<OpenApiSecurityRequirement>();
 
-            var securityScheme = new OpenApiSecurityScheme
-            {
-                Scheme = "Bearer",
-                BearerFormat = "JWT",
-                In = ParameterLocation.Header,
-                Name = "Authorization",
-                Type = SecuritySchemeType.Http,
-                Description = "Input your Bearer token in this format - Bearer {your token here}",
-                Reference = new OpenApiReference
-                {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
-            };
-
             operation.Security.Add(new OpenApiSecurityRequirement
             {
                 {
-                    securityScheme, new List<string>()
+                    new OpenApiSecuritySchemeReference("Bearer", context.Document), new List<string>()
                 }
             });
         }

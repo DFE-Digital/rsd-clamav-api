@@ -1,6 +1,6 @@
 # rsd-clamav-api — Agent entry point
 
-Dockerised **ClamAV (`clamd`) + .NET 8 minimal API**. FlexForms never calls this directly. `rsd-file-scanner-function` POSTs `/scan/async/url` with a Base64 SAS (or `file://`) URL; this API downloads and scans.
+Dockerised **ClamAV (`clamd`) + .NET 10 minimal API**. FlexForms never calls this directly. `rsd-file-scanner-function` POSTs `/scan/async/url` with a Base64 SAS (or `file://`) URL; this API downloads and scans.
 
 Human doc: [`readme.md`](readme.md) (note: it may still mention `BackgroundScanService.cs` — implementation uses CoreLibs `AddBackgroundServiceWithParallelism`).
 
