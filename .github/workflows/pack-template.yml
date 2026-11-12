@@ -117,4 +117,4 @@ jobs:
             --title "Release ${{ env.VERSION }} for ${{ inputs.project_name }}" \
             --notes "${{ env.RELEASE_NOTES }}" \
             --draft=false \
-            --prerelease=${{ github.event_name == 'pull_request' }} 
+            --prerelease=${{ github.event_name == 'pull_request' }}
