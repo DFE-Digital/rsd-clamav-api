@@ -4,6 +4,8 @@
 
 No tests. Deploy workflow on `main`. GitVersion ContinuousDelivery.
 
+Versioning uses **GitVersion 6** (`gittools/actions/gitversion/setup@v4.5.0`, `versionSpec: 6.7.x`), matching DfE.CoreLibs. `GitVersion.yml` uses the v6 key `label` (v5's `tag` is rejected). Client versions come from tags `GovUK.Dfe.ClamAV.Api.Client-{version}` via `/overrideconfig tag-prefix`; PR builds produce `{x.y.z}-prerelease.{n}` (older v5 prereleases used `-prerelease-{n}`). The v0.9 action no longer runs on GitHub runners (it relies on the removed `set-env` command).
+
 CODEOWNERS: `.github/CODEOWNERS`.
 
 Client pack (`ci-pack-api-client.yml`): the repo's default `GITHUB_TOKEN` is read-only, and a reusable workflow cannot raise permissions above its caller. The `pack-and-release` job therefore grants `contents: write` (tag + GitHub release) and `packages: write` itself; drop either and GitHub rejects the whole workflow file as invalid.
