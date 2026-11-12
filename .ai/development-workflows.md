@@ -8,7 +8,9 @@ Versioning uses **GitVersion 6** (`gittools/actions/gitversion/setup@v4.5.0`, `v
 
 CODEOWNERS: `.github/CODEOWNERS`.
 
-Client pack (`ci-pack-api-client.yml`): the repo's default `GITHUB_TOKEN` is read-only, and a reusable workflow cannot raise permissions above its caller. The `pack-and-release` job therefore grants `contents: write` (tag + GitHub release) and `packages: write` itself; drop either and GitHub rejects the whole workflow file as invalid.
+Client pack (`ci-pack-api-client.yml`): the repo's default `GITHUB_TOKEN` is read-only, and a reusable workflow cannot raise permissions above its caller. The `pack-and-release` job therefore grants `contents: write` (tag + GitHub release), `packages: write` and `id-token: write` itself; drop any of them and GitHub rejects the whole workflow file as invalid.
+
+Publishing uses **nuget.org Trusted Publishing** (OIDC), as DfE.CoreLibs does; there is no long-lived NuGet API key. `NuGet/login@v1` exchanges the GitHub OIDC token for a one-hour key just before `dotnet nuget push`. Requirements: a Trusted Publishing policy on nuget.org for owner `DFE-Digital`, repository `rsd-clamav-api`, workflow file `pack-template.yml` (the policy matches the reusable workflow's `job_workflow_ref`, not the caller), and a repository secret `NUGET_USER` holding the nuget.org **username** (not email) that owns the policy.
 
 ## Runtime and image (**Verified**)
 

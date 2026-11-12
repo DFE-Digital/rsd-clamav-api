@@ -11,7 +11,7 @@ Human doc: [`readme.md`](readme.md) (note: it may still mention `BackgroundScanS
 3. `/healthz` is anonymous; scan endpoints require JWT role `API.Read` (`CanRead`).
 4. Large files: use async URL/file, not sync `POST /scan` (loads stream via NClam).
 5. NSwag client regenerates when `CI != true`. docker-compose sets `CI: true` (skips regen).
-6. No Terraform in this repo. Deploy: `.github/workflows/deploy.yml` → Azure Container Apps. Client pack: `ci-pack-api-client.yml` (trusted publishing per repo if configured).
+6. No Terraform in this repo. Deploy: `.github/workflows/deploy.yml` → Azure Container Apps. Client pack: `ci-pack-api-client.yml` → `pack-template.yml`, published with nuget.org Trusted Publishing (OIDC, secret `NUGET_USER`; no API key).
 7. **No test project** today. Don’t assume CI runs tests.
 
 ## Knowledge map
