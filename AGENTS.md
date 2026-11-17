@@ -16,7 +16,7 @@ Human doc: [`readme.md`](readme.md) (note: it may still mention `BackgroundScanS
 
 ## Knowledge map
 
-[`.ai/architecture.md`](.ai/architecture.md) · [`.ai/integrations.md`](.ai/integrations.md) · [`.ai/security.md`](.ai/security.md) · [`.ai/known-pitfalls.md`](.ai/known-pitfalls.md) · [`.ai/features/scan-api.md`](.ai/features/scan-api.md) · [`.ai/history-lessons.md`](.ai/history-lessons.md)
+[`.ai/ecosystem.md`](.ai/ecosystem.md) (whole platform, same file in all six repos) · [`.ai/architecture.md`](.ai/architecture.md) (includes code map) · [`.ai/integrations.md`](.ai/integrations.md) · [`.ai/security.md`](.ai/security.md) · [`.ai/known-pitfalls.md`](.ai/known-pitfalls.md) · [`.ai/features/scan-api.md`](.ai/features/scan-api.md) · [`.ai/history-lessons.md`](.ai/history-lessons.md)
 
 Platform decision: flexforms-api `docs/adrs/20251125_use_clamav_for_virus_scanning.md`.
 
